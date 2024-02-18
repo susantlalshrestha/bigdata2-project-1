@@ -19,7 +19,7 @@ The preview shows you a rendered HTML copy of the contents of the editor. Conseq
 
 ```{r}
 #Load data into R studio
-df <- read.csv("C:/Users/amosc/OneDrive/Desktop/Big Data/Project 1 - Big Data/monroe county car crach 2003-2015.csv")
+df <- read.csv("./monroe county car crach 2003-2015.csv")
 df
 ```
 ```{r}
@@ -53,5 +53,88 @@ convert_float_to_time <- function(time_float) {
 clean_df <- clean_df %>% 
   mutate(Hour = convert_float_to_time(Hour))
 head(clean_df$Hour)
+```
+```{r}
+head(clean_df)
+```
+```{r}
+# Add ID to each row
+clean_dfID <- clean_df %>% mutate(ID = row_number())
+head(clean_dfID)
+```
+
+NOTE: USE clean_dfID for findings
+
+```{r}
+library(leaflet)
+
+#Attempt to draw a map based on longitute and latitude
+```
+
+
+```{r}
+library(shiny)
+library(shinydashboard)
+
+clean_dfID <- clean_dfID
+
+# Sample dataframe
+# dfsample <- data.frame(
+#   ID = 1:5,
+#   Name = c("John", "Alice", "Bob", "Eve", "Mike"),
+#   Age = c(25, 30, 35, 40, 45)
+# )
+
+ui<- dashboardPage(
+  dashboardHeader(title = "Big Data 2 - R Project"),
+  dashboardSidebar(
+      sidebarMenu(
+        menuItem("Dashboard", tabName = "dashboard", icon = icon("dashboard")),
+        menuItem("Dataset", tabName="Dataset", icon = icon("th"))
+    )
+  ),
+  dashboardBody(
+    tabItems(
+      tabItem(tabName = "dashboard",
+        # fluidRow(
+        #   box(
+        #     title = "Monroe County",
+        #     status = "primary",
+        #     solidHeader = TRUE,
+        #     leafletOutput("map")
+        #   )
+        # )
+      ),
+      #Second tab content
+      tabItem(tabName = "Dataset",
+        fluidRow(
+          box(
+            title = "Monroe County Car Crash",
+            status = "primary",
+            solidHeader = TRUE,
+            tableOutput("table")
+          )
+        )
+      )
+    )
+  )
+)
+
+server <- function(input, output) {
+  # output$map <- renderLeaflet({
+  #   leaflet() %>%
+  #     addTiles() %>%
+  #     addMarkers(
+  #       data = clean_dfID,
+  #       ~Longitude, ~Latitude,
+  #       popup = ~as.character(ID)
+  #     )
+  # })
+  output$table <- renderTable({
+    clean_dfID
+  }, useBytes = TRUE, options = list(decimal = ".", digit.sep = ",", num.sep = ""))
+}
+
+shinyApp(ui, server = server)
 ```
 
