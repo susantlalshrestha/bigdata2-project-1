@@ -3,41 +3,32 @@ title: "Project 1 - Exploring Car Crash Dataset using R"
 output: html_notebook
 ---
 
-This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
-
-Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
-
 ```{r}
-plot(cars)
+# Load necessary libraries
+library(dplyr)
+library(ggplot2)
 ```
 
-Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
-
-When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
-
-The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
-
 ```{r}
-#Load data into R studio
+# Load data
 df <- read.csv("./monroe county car crach 2003-2015.csv")
-df
 ```
+
 ```{r}
 #Quick facts about the dataset
 summary(df)
 dim(df)
 colSums(is.na(df))
 ```
+
 ```{r}
-#Drop duplicates and NA values
+# Drop duplicates and NA values
 clean_df <- df[complete.cases(df) & !duplicated(df), ]
-clean_df
 colSums(is.na(clean_df))
 ```
 
 ```{r}
-#Convert the hour into readable format
-library(dplyr)
+# Convert the hour into readable format
 convert_float_to_time <- function(time_float) {
   time_str <- gsub("\\.0", "", as.character(time_float))
   time_str <- sprintf("%04d", as.integer(time_str))
@@ -46,17 +37,17 @@ convert_float_to_time <- function(time_float) {
   minutes <- substr(time_str, nchar(time_str) - 1, nchar(time_str))
   
   return(paste(hours, minutes, sep = ":"))
-  
 }
-```
-```{r}
+
 clean_df <- clean_df %>% 
   mutate(Hour = convert_float_to_time(Hour))
 head(clean_df$Hour)
 ```
+
 ```{r}
 head(clean_df)
 ```
+
 ```{r}
 # Add ID to each row
 clean_dfID <- clean_df %>% mutate(ID = row_number())
@@ -66,53 +57,108 @@ head(clean_dfID)
 NOTE: USE clean_dfID for findings
 
 ```{r}
-library(leaflet)
-
-#Attempt to draw a map based on longitute and latitude
+# Total count of each Collision Type
+collision_counts <- table(clean_dfID$`Collision.Type`)
 ```
 
+```{r}
+# Plot a bar chart for Collision Type
+collision_plot <- ggplot(data = clean_dfID, aes(x = `Collision.Type`)) +
+  geom_bar(fill = "skyblue") +
+  labs(title = "Total Count of Each Collision Type", x = "Collision Type", y = "Count") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+collision_plot
+```
 
 ```{r}
+# Plot a histogram for Hour
+hour_plot <- ggplot(data = clean_dfID, aes(x = Hour)) +
+  geom_histogram(fill = "skyblue", bins = 24, color = "white", stat = "count") +
+  labs(title = "Distribution of Accidents by Hour", x = "Hour", y = "Count") +
+  theme_minimal()
+
+hour_plot
+```
+
+```{r}
+# Plot a bar chart for Weekend vs Weekday
+day_type_counts <- clean_dfID %>%
+  group_by(Weekend.) %>%
+  summarize(Count = n())
+
+day_type_plot <- ggplot(data = day_type_counts, aes(x = Weekend., y = Count, fill = Weekend.)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Number of Accidents by Day Type", x = "Day Type", y = "Count") +
+  theme_minimal()
+
+day_type_plot
+```
+
+```{r}
+# Plot a line graph showing the trend of accidents
+date_counts <- clean_dfID %>%
+  group_by(Date = as.Date(paste(Year, Month, Day, sep = "-"))) %>%
+  summarize(Count = n())
+
+trend_plot <- ggplot(data = date_counts, aes(x = Date, y = Count)) +
+  geom_line() +
+  labs(title = "Trend of Accidents Over Time", x = "Date", y = "Number of Accidents") +
+  theme_minimal()
+
+trend_plot
+```
+
+```{r}
+# Total count of Injury Type
+injury_counts <- table(clean_dfID$Injury.Type)
+injury_counts
+```
+
+```{r}
+# Plot a pie chart for Injury Type
+injury_plot <- ggplot(data = data.frame(injury = names(injury_counts), count = as.numeric(injury_counts)), aes(x = "", y = count, fill = injury)) +
+  geom_bar(width = 1, stat = "identity") +
+  coord_polar("y", start = 0) +
+  labs(title = "Distribution of Injury Types") +
+  theme_void()
+
+injury_plot
+```
+
+```{r}
+library(leaflet)
 library(shiny)
 library(shinydashboard)
 
-clean_dfID <- clean_dfID
-
-# Sample dataframe
-# dfsample <- data.frame(
-#   ID = 1:5,
-#   Name = c("John", "Alice", "Bob", "Eve", "Mike"),
-#   Age = c(25, 30, 35, 40, 45)
-# )
-
-ui<- dashboardPage(
-  dashboardHeader(title = "Big Data 2 - R Project"),
+ui <- dashboardPage(
+  dashboardHeader(title = "Accident Analysis Dashboard"),
   dashboardSidebar(
-      sidebarMenu(
-        menuItem("Dashboard", tabName = "dashboard", icon = icon("dashboard")),
-        menuItem("Dataset", tabName="Dataset", icon = icon("th"))
+    sidebarMenu(
+      menuItem("Map", tabName = "map", icon = icon("map")),
+      menuItem("Summary", tabName = "summary", icon = icon("table"))
     )
   ),
   dashboardBody(
     tabItems(
-      tabItem(tabName = "dashboard",
-        # fluidRow(
-        #   box(
-        #     title = "Monroe County",
-        #     status = "primary",
-        #     solidHeader = TRUE,
-        #     leafletOutput("map")
-        #   )
-        # )
-      ),
-      #Second tab content
-      tabItem(tabName = "Dataset",
+      tabItem(tabName = "map",
         fluidRow(
           box(
-            title = "Monroe County Car Crash",
+            title = "Accident Map",
             status = "primary",
             solidHeader = TRUE,
-            tableOutput("table")
+            leafletOutput("map")
+          )
+        )
+      ),
+      tabItem(tabName = "summary",
+        fluidRow(
+          box(
+            title = "Summary Table",
+            status = "primary",
+            solidHeader = TRUE,
+            tableOutput("summary_table")
           )
         )
       )
@@ -121,20 +167,21 @@ ui<- dashboardPage(
 )
 
 server <- function(input, output) {
-  # output$map <- renderLeaflet({
-  #   leaflet() %>%
-  #     addTiles() %>%
-  #     addMarkers(
-  #       data = clean_dfID,
-  #       ~Longitude, ~Latitude,
-  #       popup = ~as.character(ID)
-  #     )
-  # })
-  output$table <- renderTable({
-    clean_dfID
-  }, useBytes = TRUE, options = list(decimal = ".", digit.sep = ",", num.sep = ""))
+  output$map <- renderLeaflet({
+    leaflet() %>%
+      addTiles() %>%
+      addMarkers(data = clean_dfID, ~Longitude, ~Latitude, popup = ~Reported_Location)
+  })
+
+  output$summary_table <- renderTable({
+    summary_table <- clean_dfID %>%
+      summarize_all(~n()) %>%
+      t() %>%
+      as.data.frame()
+    colnames(summary_table) <- "Count"
+    summary_table
+  })
 }
 
-shinyApp(ui, server = server)
+shinyApp(ui, server)
 ```
-
