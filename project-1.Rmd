@@ -160,78 +160,83 @@ ggplot(grouped_primary_factor, aes(x = reorder(`Primary.Factor`, -counts), y = c
   coord_flip()
 ```
 
+```{r}
+#Plot a bar chat for Collision Type
+collision_counts <- table(clean_dfID$`Collision.Type`)
+collision_plot <- ggplot(data = clean_dfID, aes(x = `Collision.Type`)) +
+  geom_bar(fill = "skyblue") +
+  labs(title = "Total Count of Each Collision Type", x = "Collision Type", y = "Count") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+collision_plot
+```
+
 
 
 ```{r}
-library(leaflet)
+# Plot a line graph showing the trend of accidents
+date_counts <- clean_dfID %>%
+  group_by(Date = as.Date(paste(Year, Month, Day, sep = "-"))) %>%
+  summarize(Count = n())
 
-#Attempt to draw a map based on longitute and latitude
+trend_plot <- ggplot(data = date_counts, aes(x = Date, y = Count)) +
+  geom_line() +
+  labs(title = "Trend of Accidents Over Time", x = "Date", y = "Number of Accidents") +
+  theme_minimal()
+
+trend_plot
 ```
+
+```{r}
+#Training the model for insights
+
+```
+
 
 
 ```{r}
 library(shiny)
-library(shinydashboard)
+library(dplyr)
+library(ggplot2)
 
-clean_dfID <- clean_dfID
-
-# Sample dataframe
-# dfsample <- data.frame(
-#   ID = 1:5,
-#   Name = c("John", "Alice", "Bob", "Eve", "Mike"),
-#   Age = c(25, 30, 35, 40, 45)
-# )
-
-ui<- dashboardPage(
-  dashboardHeader(title = "Big Data 2 - R Project"),
-  dashboardSidebar(
-      sidebarMenu(
-        menuItem("Dashboard", tabName = "dashboard", icon = icon("dashboard")),
-        menuItem("Dataset", tabName="Dataset", icon = icon("th"))
-    )
-  ),
-  dashboardBody(
-    tabItems(
-      tabItem(tabName = "dashboard",
-        # fluidRow(
-        #   box(
-        #     title = "Monroe County",
-        #     status = "primary",
-        #     solidHeader = TRUE,
-        #     leafletOutput("map")
-        #   )
-        # )
-      ),
-      #Second tab content
-      tabItem(tabName = "Dataset",
-        fluidRow(
-          box(
-            title = "Monroe County Car Crash",
-            status = "primary",
-            solidHeader = TRUE,
-            tableOutput("table")
-          )
-        )
-      )
+# Define UI
+ui <- fluidPage(
+  titlePanel("Accident Data Analysis"),
+  sidebarLayout(
+    sidebarPanel(
+      selectInput("group", "Group by:", choices = c("Year", "Month", "Day", "Hour"))
+    ),
+    mainPanel(
+      plotOutput("plot")
     )
   )
 )
 
+# Define server logic
 server <- function(input, output) {
-  # output$map <- renderLeaflet({
-  #   leaflet() %>%
-  #     addTiles() %>%
-  #     addMarkers(
-  #       data = clean_dfID,
-  #       ~Longitude, ~Latitude,
-  #       popup = ~as.character(ID)
-  #     )
-  # })
-  output$table <- renderTable({
-    clean_dfID
-  }, useBytes = TRUE, options = list(decimal = ".", digit.sep = ",", num.sep = ""))
+  
+  output$plot <- renderPlot({
+    group_var <- input$group
+    
+    grouped <- df %>%
+      group_by_at(vars(group_var)) %>%
+      summarise(count = n()) %>%
+      ungroup()
+    
+    cols <- ifelse(grouped$count < max(grouped$count), "green", "orange")
+    
+    ggplot(grouped, aes_string(x = group_var, y = "count", fill = "cols")) +
+      geom_bar(stat = "identity") +
+      theme_minimal() +
+      ggtitle(paste("Number of accidents by", group_var)) +
+      theme(axis.text.x = element_text(angle = 60, hjust = 1)) +
+      labs(x = "", y = "Count") +
+      scale_fill_identity(name = "Color", labels = c("Less than max", "Max count"))
+  })
 }
 
-shinyApp(ui, server = server)
+# Run the application 
+shinyApp(ui = ui, server = server)
 ```
 
