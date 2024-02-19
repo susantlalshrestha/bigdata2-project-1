@@ -65,6 +65,103 @@ head(clean_dfID)
 
 NOTE: USE clean_dfID for findings
 
+
+```{r}
+#Number of accidents by years, months, days and hours
+
+library(dplyr)
+library(ggplot2)
+
+group_list <- c("Year", "Month", "Day", "Hour")
+
+for (i in group_list) {
+  grouped <- df %>%
+    group_by_at(vars({{i}})) %>%
+    summarise(count = n()) %>%
+    ungroup()
+  
+  cols <- ifelse(grouped$count < max(grouped$count), "green", "orange")
+  
+  countOfAccidents <- ggplot(grouped, aes_string(x = i, y = "count", fill = "cols")) +
+    geom_bar(stat = "identity") +
+    theme_minimal() +
+    ggtitle(paste("Number of accidents by", i)) +
+    theme(axis.text.x = element_text(angle = 60, hjust = 1)) +
+    labs(x = "", y = "Count") +
+    scale_fill_identity(name = "Color", labels = c("Less than max", "Max count"))
+  
+  print(countOfAccidents)
+  
+}
+```
+
+```{r}
+#Number and rates of accidents on weekdays and weekends
+df_filtered <- df %>%
+  filter(`Weekend.` %in% c("Weekend", "Weekday"))
+
+# Group and summarize
+grouped_week <- df_filtered %>%
+  group_by(`Weekend.`) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+print(grouped_week)
+```
+```{r}
+# Define color palette
+col_pal <- c("#1f77b4", "#ff7f0e")
+
+# Plotting barplot and pie chart
+par(mfrow = c(1, 2), mar = c(5, 4, 4, 2))
+
+# Barplot
+barplot(grouped_week$count, names.arg = grouped_week$`Weekend.`, 
+        col = col_pal[3], main = "Number of accidents on weekdays and weekends",
+        xlab = "", ylab = "Count")
+
+# Pie chart
+pie(grouped_week$count, labels = grouped_week$`Weekend.`, 
+    main = "Percentage of accidents on weekdays and weekends", 
+    col = col_pal, init.angle = 45)
+
+# Adding legend
+legend("topright", legend = grouped_week$`Weekend.`, fill = col_pal, title = "Weekend", cex = 0.8)
+
+# Reset par settings
+par(mfrow = c(1, 1))
+```
+
+```{r}
+#Cause of accidents
+
+# Group by "Primary Factor", calculate counts, and reset index
+grouped_primary_factor <- df %>%
+  group_by(`Primary.Factor`) %>%
+  summarise(counts = n()) %>%
+  ungroup()
+
+# Sort the data frame by counts in descending order and select the top 10 rows
+grouped_primary_factor <- grouped_primary_factor %>%
+  arrange(desc(counts)) %>%
+  head(10)
+
+print(grouped_primary_factor)
+```
+```{r}
+# Plotting the bar chart
+ggplot(grouped_primary_factor, aes(x = reorder(`Primary.Factor`, -counts), y = counts)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  theme_minimal() +
+  labs(title = "Top 10 Primary Factors",
+       x = "Primary Factor",
+       y = "Counts") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  coord_flip()
+```
+
+
+
 ```{r}
 library(leaflet)
 
