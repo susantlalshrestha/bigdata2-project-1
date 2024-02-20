@@ -170,22 +170,26 @@ collision_plot
 
 
 ```{r}
-# Plot a line graph showing the trend of accidents
-date_counts <- clean_dfID %>%
-  group_by(Date = as.Date(paste(Year, Month, Day, sep = "-"))) %>%
+year_counts <- clean_dfID %>%
+  mutate(Year = as.integer(Year)) %>%
+  group_by(Year) %>%
   summarize(Count = n())
 
-trend_plot <- ggplot(data = date_counts, aes(x = Date, y = Count)) +
+trend_plot_year <- ggplot(data = year_counts, aes(x = Year, y = Count)) +
   geom_line() +
-  labs(title = "Trend of Accidents Over Time", x = "Date", y = "Number of Accidents") +
+  labs(title = "Trend of Accidents by Year", x = "Year", y = "Number of Accidents") +
+  scale_x_continuous(breaks = seq(min(year_counts$Year), max(year_counts$Year), by = 1)) +
   theme_minimal()
 
-trend_plot
+trend_plot_year
 ```
-
 ```{r}
 #Training the model for insights
 library(caret)
+
+# Handle missing values (if any)
+clean_dfID$Longitude[is.na(clean_dfID$Longitude)] <- mean(clean_dfID$Longitude, na.rm = TRUE)
+clean_dfID$Latitude[is.na(clean_dfID$Latitude)] <- mean(clean_dfID$Latitude, na.rm = TRUE)
 
 # Define the target variable and features
 target <- "Injury.Type"
@@ -209,20 +213,33 @@ model <- train(data_train[, features], data_train[, target],
 
 # Print the model
 print(model)
+```
 
+```{r}
+# Extract feature importance
+importance <- varImp(model, scale = FALSE)
+
+# Plot feature importance
+print(importance)
+plot(importance)
+```
+
+```{r}
 # Make predictions on the training set
 train_predictions <- predict(model, data_train[, features])
 
 # Calculate training accuracy
-train_accuracy <- confusionMatrix(train_predictions,as.factor(data_train[, target]))$overall["Accuracy"]
-print(paste("Training Accuracy:", train_accuracy))
+train_conf_matrix <- confusionMatrix(train_predictions, as.factor(data_train[, target]))
+accuracy <- train_conf_matrix$overall["Accuracy"]
+print(paste("Train Accuracy:", accuracy))
 
 # Make predictions on the test set
 test_predictions <- predict(model, data_test[, features])
 
 # Calculate test accuracy
-test_accuracy <- confusionMatrix(test_predictions, as.factor(data_test[, target]))$overall["Accuracy"]
-print(paste("Test Accuracy:", test_accuracy))
+test_conf_matrix <- confusionMatrix(test_predictions, as.factor(data_test[, target]))
+accuracy <- train_conf_matrix$overall["Accuracy"]
+print(paste("Test Accuracy:", accuracy))
 ```
 
 ```{r}
